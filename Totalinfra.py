@@ -10,7 +10,7 @@ iam_client = boto3.client('iam')
 def create_security_group(vpc_id):
     response = ec2_client.create_security_group(
         Description='Allow HTTP and HTTPS traffic',
-        GroupName='web-sg',
+        GroupName='app-sg-1',
         VpcId=vpc_id
     )
     sg_id = response['GroupId']
@@ -37,19 +37,19 @@ def create_security_group(vpc_id):
 
 def create_load_balancer(subnets, security_groups):
     response = elbv2_client.create_load_balancer(
-        Name='my-alb',
+        Name='app-alb',
         Subnets=subnets,
         SecurityGroups=security_groups,
         Scheme='internet-facing',
         Tags=[
-            {'Key': 'Name', 'Value': 'my-alb'}
+            {'Key': 'Name', 'Value': 'app-alb'}
         ]
     )
     return response['LoadBalancers'][0]['LoadBalancerArn']
 
 def create_target_group(vpc_id):
     response = elbv2_client.create_target_group(
-        Name='my-targets',
+        Name='app-target-group',
         Protocol='HTTP',
         Port=80,
         VpcId=vpc_id,
@@ -80,7 +80,7 @@ def create_listener(load_balancer_arn, target_group_arn):
 
 def create_launch_template(image_id, instance_type, sg_id):
     response = ec2_client.create_launch_template(
-        LaunchTemplateName='my-template',
+        LaunchTemplateName='app-Template',
         LaunchTemplateData={
             'ImageId': image_id,
             'InstanceType': instance_type,
@@ -89,7 +89,7 @@ def create_launch_template(image_id, instance_type, sg_id):
                 {
                     'ResourceType': 'instance',
                     'Tags': [
-                        {'Key': 'Name', 'Value': 'my-instance'}
+                        {'Key': 'Name', 'Value': 'app-ec2'}
                     ]
                 }
             ]
@@ -99,7 +99,7 @@ def create_launch_template(image_id, instance_type, sg_id):
 
 def create_auto_scaling_group(launch_template_id, subnets):
     response = autoscaling_client.create_auto_scaling_group(
-        AutoScalingGroupName='my-asg',
+        AutoScalingGroupName='app-asg-1',
         LaunchTemplate={'LaunchTemplateId': launch_template_id},
         MinSize=1,
         MaxSize=5,
@@ -107,10 +107,10 @@ def create_auto_scaling_group(launch_template_id, subnets):
         VPCZoneIdentifier=','.join(subnets),
         Tags=[
             {
-                'ResourceId': 'my-asg',
+                'ResourceId': 'app-asg-1',
                 'ResourceType': 'auto-scaling-group',
                 'Key': 'Name',
-                'Value': 'my-asg',
+                'Value': 'app-asg-1',
                 'PropagateAtLaunch': True
             }
         ]
@@ -151,7 +151,7 @@ def create_infrastructure(image_id, instance_type, vpc_id, subnets, email):
     
     launch_template_id = create_launch_template(image_id, instance_type, sg_id)
     create_auto_scaling_group(launch_template_id, subnets)
-    create_scaling_policy('my-asg')
+    create_scaling_policy('app-asg-1')
     
     topic_arn = create_sns_topic('scaling-events')
     create_sns_subscription(topic_arn, 'email', email)
